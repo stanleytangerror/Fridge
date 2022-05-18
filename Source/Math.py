@@ -48,3 +48,17 @@ def HitSphere(rayOrigin, rayDir, sphereCenter, sphereRadius, maxDist):
         if dist < maxDist - EPS:
             hit = True
     return hit, dist
+
+@ti.func
+def HitPlane(rayOrigin, rayDir, planeNormal, planeD, maxDist):
+    hit = False
+    dist = maxDist
+
+    NdotD = rayDir.dot(planeNormal)
+    if ti.abs(NdotD) > EPS:
+        NdotO = rayOrigin.dot(planeNormal)
+        dist = ti.min(dist, -(planeD + NdotO) / NdotD)
+        if dist > EPS:
+            hit = True
+
+    return hit, dist

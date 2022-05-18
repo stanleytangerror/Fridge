@@ -61,23 +61,6 @@ def CastRay(u, v):
     return TRay(origin=cameraPos[None], direction=d)
 
 @ti.func
-def HitGround(ray, maxDist):
-    dist = maxDist
-    hit = False
-    normal = ZUnit3f
-
-    if ray.direction[2] < 0.0:
-        dist = ti.min(dist, (ray.origin[2] + 3.0) / (-ray.direction[2]))
-        if dist < maxDist - EPS:
-            hit = True
-
-    return hit, dist, normal
-
-@ti.func
-def HitLight(ray, maxDist):
-    return HitSphere(ray.origin, ray.direction, Vec3f([0.0, 10.0, 0.0]), 2.0, maxDist)
-
-@ti.func
 def ReadVolume(pos):
     return Vec3f([1, 1, 1]), lerp(noise.Noise3D(pos) * 0.5 + 0.5, 0.0, 0.1)
 
@@ -97,8 +80,11 @@ def Trace(ray, maxDist):
     for i in range(depth):
         if hitLight or absorbed: continue
         
-        hitL, distL = HitLight(ray, maxDist)
-        hitG, distG, N = HitGround(ray, maxDist)
+        # light
+        hitL, distL = HitSphere(ray.origin, ray.direction, Vec3f([0.0, 10.0, 0.0]), 2.0, maxDist) 
+        # ground
+        hitG, distG = HitPlane(ray.origin, ray.direction, ZUnit3f, 3.0, maxDist)
+        N = ZUnit3f
 
         if hitG and ((not hitL) or distL >= distG):
             nextOrigin = ray.origin + distG * ray.direction
