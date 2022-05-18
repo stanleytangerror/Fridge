@@ -118,23 +118,6 @@ windowImage = ti.Vector.field(3, float, shape=WindowSize)
 debugBuffer = ti.field(dtype=ti.f32, shape=WindowSize)
 
 # ---------------------------------------------------------------------
-@ti.func
-def AlmostEqual(a, b):
-    return ti.abs(a - b) < EPS
-
-@ti.func
-def RandomUnitDisk():
-    v = Vec2f([ti.random(ti.f32) * 2.0 - 1.0, ti.random(ti.f32) * 2.0 - 1.0])
-    while v.norm_sqr() >= 1.0:
-        v = Vec2f([ti.random(ti.f32) * 2.0 - 1.0, ti.random(ti.f32) * 2.0 - 1.0])
-    return v
-
-@ti.func
-def RandomUnitVec3():
-    phi = ti.random(ti.f32) * 2.0 * ti.math.pi
-    z = ti.random(ti.f32) * 2.0 - 1.0
-    r = ti.sqrt(1.0 - z ** 2)
-    return Vec3f([r * ti.cos(phi), r * ti.sin(phi), z])
 
 @ti.func
 def Reflect(N, L):

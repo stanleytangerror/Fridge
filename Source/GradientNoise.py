@@ -72,11 +72,6 @@ class GradientNoise:
     
     @staticmethod
     @ti.func
-    def _Lerp(t, a, b): 
-        return a + t * (b - a)
-    
-    @staticmethod
-    @ti.func
     def _Gradient3D(h):
         # directly place the function body will generate bug
         return _Gradient3D(h)
@@ -112,14 +107,14 @@ class GradientNoise:
         BA = self.HashLut[B  ] + p[2]
         BB = self.HashLut[B+1] + p[2]
     
-        return  self._Lerp(u[2],self._Lerp(u[1],self._Lerp(u[0],self._Gradient3D(self.HashLut[AA  ]).dot(w + Vec3f([ 0,  0,  0]) ),  # AND ADD
-                                                                self._Gradient3D(self.HashLut[BA  ]).dot(w + Vec3f([-1,  0,  0]) )), # BLENDED
-                                                self._Lerp(u[0],self._Gradient3D(self.HashLut[AB  ]).dot(w + Vec3f([ 0, -1,  0]) ),  # RESULTS
-                                                                self._Gradient3D(self.HashLut[BB  ]).dot(w + Vec3f([-1, -1,  0]) ))),# FROM  8
-                                self._Lerp(u[1],self._Lerp(u[0],self._Gradient3D(self.HashLut[AA+1]).dot(w + Vec3f([ 0,  0, -1]) ),  # CORNERS
-                                                                self._Gradient3D(self.HashLut[BA+1]).dot(w + Vec3f([-1,  0, -1]) )), # OF CUBE
-                                                self._Lerp(u[0],self._Gradient3D(self.HashLut[AB+1]).dot(w + Vec3f([ 0, -1, -1]) ),
-                                                                self._Gradient3D(self.HashLut[BB+1]).dot(w + Vec3f([-1, -1, -1]) ))))
+        return  lerp(u[2],  lerp(u[1],  lerp(u[0],  self._Gradient3D(self.HashLut[AA  ]).dot(w + Vec3f([ 0,  0,  0]) ),  # AND ADD
+                                                    self._Gradient3D(self.HashLut[BA  ]).dot(w + Vec3f([-1,  0,  0]) )), # BLENDED
+                                        lerp(u[0],  self._Gradient3D(self.HashLut[AB  ]).dot(w + Vec3f([ 0, -1,  0]) ),  # RESULTS
+                                                    self._Gradient3D(self.HashLut[BB  ]).dot(w + Vec3f([-1, -1,  0]) ))),# FROM  8
+                            lerp(u[1],  lerp(u[0],  self._Gradient3D(self.HashLut[AA+1]).dot(w + Vec3f([ 0,  0, -1]) ),  # CORNERS
+                                                    self._Gradient3D(self.HashLut[BA+1]).dot(w + Vec3f([-1,  0, -1]) )), # OF CUBE
+                                        lerp(u[0],  self._Gradient3D(self.HashLut[AB+1]).dot(w + Vec3f([ 0, -1, -1]) ),
+                                                    self._Gradient3D(self.HashLut[BB+1]).dot(w + Vec3f([-1, -1, -1]) ))))
     
     @ti.func
     def Noise2D(self, x):
@@ -136,10 +131,10 @@ class GradientNoise:
         A = self.HashLut[p[0]  ] + p[1]
         B = self.HashLut[p[0]+1] + p[1]
     
-        return  self._Lerp(u[1],self._Lerp(u[0],self._Gradient2D(self.HashLut[A  ]).dot(w + Vec2f([ 0,  0])) , 
-                                                self._Gradient2D(self.HashLut[B  ]).dot(w + Vec2f([-1,  0])) ),
-                                self._Lerp(u[0],self._Gradient2D(self.HashLut[A+1]).dot(w + Vec2f([ 0, -1])) , 
-                                                self._Gradient2D(self.HashLut[B+1]).dot(w + Vec2f([-1, -1])) ))
+        return  lerp(u[1],  lerp(u[0],  self._Gradient2D(self.HashLut[A  ]).dot(w + Vec2f([ 0,  0])) , 
+                                        self._Gradient2D(self.HashLut[B  ]).dot(w + Vec2f([-1,  0])) ),
+                            lerp(u[0],  self._Gradient2D(self.HashLut[A+1]).dot(w + Vec2f([ 0, -1])) , 
+                                        self._Gradient2D(self.HashLut[B+1]).dot(w + Vec2f([-1, -1])) ))
     
     @ti.func
     def Noise1D(self, x):
@@ -153,8 +148,8 @@ class GradientNoise:
         # HASH COORDINATES OF THE 4 SQUARE CORNERS
         A = self.HashLut[p]
     
-        return  self._Lerp(u,   self._Gradient1D(self.HashLut[A  ]) * (w  ) , 
-                                self._Gradient1D(self.HashLut[A+1]) * (w-1) )
+        return  lerp(u, self._Gradient1D(self.HashLut[A  ]) * (w  ) , 
+                        self._Gradient1D(self.HashLut[A+1]) * (w-1) )
 
 if __name__ == "__main__":
     ti.init(arch=ti.vulkan)
