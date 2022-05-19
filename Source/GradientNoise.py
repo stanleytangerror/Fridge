@@ -185,7 +185,7 @@ if __name__ == "__main__":
             windowImage[i, j] = Vec3f([1, 1, 1]) * up
 
     @ti.kernel
-    def GenerateFBM():
+    def GenerateFbm2D():
         for i, j in windowImage:
             h = 0.0
             pos = Vec2f([i, j]) + elapsedTime[None] * 100.0
@@ -197,6 +197,19 @@ if __name__ == "__main__":
             windowImage[i, j] = Vec3f([1, 1, 1]) * (h * 0.5 + 0.5)
             debugBuffer[i, j] = h
 
+    @ti.kernel
+    def GenerateFbm3D():
+        for i, j in windowImage:
+            h = 0.0
+            pos = Vec3f([i, j, elapsedTime[None] * 100.0])
+            freq = 0.001
+            amp = 1.0
+            for k in range(1, 20):
+                m = pow(2.0, float(k))
+                h += noise.Noise3D(pos * freq * m) * amp / m
+            windowImage[i, j] = Vec3f([1, 1, 1]) * (h * 0.5 + 0.5)
+            debugBuffer[i, j] = h
+
     def DebugColorBuffer():
         buf = debugBuffer.to_numpy()
         np.savetxt("temp/out.csv", buf, delimiter=',', fmt='%.2f')
@@ -205,7 +218,7 @@ if __name__ == "__main__":
 
     while window.running:
         elapsedTime[None] = float(time.time() - beginTime)
-        GenerateFBM()
+        GenerateFbm3D()
 
         if window.is_pressed('p'):
             DebugColorBuffer()
