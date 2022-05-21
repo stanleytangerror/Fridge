@@ -9,7 +9,11 @@ EPS = 0.0001
 @ti.func
 def lerp(t, a, b): 
     return a + t * (b - a)
-    
+
+@ti.func
+def saturate(v): 
+    return ti.max(0.0, ti.min(1.0, v))
+        
 @ti.func
 def AlmostEqual(a, b):
     return ti.abs(a - b) < EPS
@@ -62,3 +66,37 @@ def HitPlane(rayOrigin, rayDir, planeNormal, planeD, maxDist):
             hit = True
 
     return hit, dist
+
+@ti.func
+def HitAABB(rayOrigin, rayDir, boxMin, boxMax, maxDist):
+    hit = True
+
+    tNear = maxDist
+    tFar = -maxDist
+
+    toMin = boxMin - rayOrigin
+    toMax = boxMax - rayOrigin
+
+    for i in ti.static(range(3)):
+        if not hit: 
+            continue
+        elif abs(rayDir[i]) < EPS:
+            if rayOrigin[i] < boxMin[i] or rayOrigin[i] > boxMax[i]:
+                hit = False
+        else:
+            t1 = toMin[i] / rayDir[i]
+            t2 = toMax[i] / rayDir[i]
+
+            tNear = ti.min(tNear, ti.min(t1, t2))
+            tFar = ti.max(tFar, ti.max(t1, t2))
+
+    if tNear > tFar or tFar < 0:
+        hit = False
+
+    t = tFar
+    goOut = True
+    if tNear > 0:
+        t = tNear
+        goOut = False
+
+    return hit, t, goOut
