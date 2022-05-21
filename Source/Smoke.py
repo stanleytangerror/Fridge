@@ -13,7 +13,7 @@ ti.init(arch=ti.vulkan)
 
 TRay = ti.types.struct(origin=Vec3f, direction=Vec3f)
 
-depth = 10
+depth = 100
 
 Zero3f = Vec3f([0.0, 0.0, 0.0])
 One3f = Vec3f([1.0, 1.0, 1.0])
@@ -48,6 +48,9 @@ invResolution = lens.InvResolution
 focusDist = lens.mFocusDistance
 aperture = lens.mAperture
 
+smokeField = ti.field(dtype=ti.f32, shape=(256, 256, 64))
+smokeBound = Vec3f.field(shape=(2))
+
 @ti.func
 def CastRay(u, v):
     u = u + ti.random(ti.f32)
@@ -61,8 +64,21 @@ def CastRay(u, v):
     return TRay(origin=cameraPos[None], direction=d)
 
 @ti.func
+def SampleField(pos):
+    fieldShape = Vec3f(smokeField.shape)
+    p = pos - ti.floor(pos / fieldShape) * fieldShape
+    x = ti.floor(p)
+    w = p - x
+    return lerp(w[2],   lerp(w[1],  lerp(w[0], smokeField[x + Vec3f([0, 0, 0])], smokeField[x + Vec3f([1, 0, 0])]) ,
+                                    lerp(w[0], smokeField[x + Vec3f([0, 1, 0])], smokeField[x + Vec3f([1, 1, 0])]) ),
+                        lerp(w[1],  lerp(w[0], smokeField[x + Vec3f([0, 0, 1])], smokeField[x + Vec3f([1, 0, 1])]) ,
+                                    lerp(w[0], smokeField[x + Vec3f([0, 1, 1])], smokeField[x + Vec3f([1, 1, 1])]) ))
+
+@ti.func
 def ReadVolume(pos):
-    return Vec3f([1, 1, 1]), lerp(noise.Noise3D(pos) * 0.5 + 0.5, 0.0, 0.1)
+    h = SampleField(pos * 20.0)
+    # h = noise.Noise3D(pos)
+    return Vec3f([0.9, 0.8, 0.7]), lerp(saturate(h * 0.5 + 0.5), 0.0, 0.5)
 
 @ti.func
 def CalcVolumeRayDist(density):
@@ -81,31 +97,38 @@ def Trace(ray, maxDist):
         if hitLight or absorbed: continue
         
         # light
-        hitL, distL = HitSphere(ray.origin, ray.direction, Vec3f([0.0, 10.0, 0.0]), 2.0, maxDist) 
+        hitL, distL = HitSphere(ray.origin, ray.direction, Vec3f([0.0, 10.0, 0.0]), 1.0, maxDist) 
         # ground
-        hitG, distG = HitPlane(ray.origin, ray.direction, ZUnit3f, 3.0, maxDist)
+        hitG, distG = HitPlaneNormPoint(ray.origin, ray.direction, Vec3f([0.0, -1.0, 1.0]).normalized(), Vec3f([0.0, 20.0, 0.0]), maxDist)
         N = ZUnit3f
 
         if hitG and ((not hitL) or distL >= distG):
             nextOrigin = ray.origin + distG * ray.direction
             nextDir = (N + RandomUnitVec3()).normalized()
             ray = TRay(origin=nextOrigin, direction=nextDir)
-            attenuation *= Vec3f([1.0, 1.0, 1.0])
+            attenuation *= Vec3f([0.9, 0.9, 0.9])
             if nextDir[2] <= EPS: absorbed = True
 
         elif hitL and ((not hitG) or distG >= distL):
             debug = 1.0
             nextOrigin = ray.origin + distL * ray.direction
-            color = Vec3f([1.0, 0.8, 0.6]) * 10
+            color = Vec3f([1.0, 0.8, 0.6]) * 100.0
             hitLight = True
 
         else:
             nextOrigin = ray.origin + maxDist * ray.direction
-            nextDir = (Vec3f([0.0, 0.0, 1.0]) + RandomUnitVec3() * 0.8).normalized()
+            nextDir = (Vec3f([0.0, 0.0, 1.0]) + RandomUnitVec3() * 1.0).normalized()
             albedo, density = ReadVolume(nextOrigin)
             attenuation *= albedo
             ray = TRay(origin=nextOrigin, direction=nextDir)
             maxDist = CalcVolumeRayDist(density)
+
+        prob = attenuation.max()
+        if ti.random(ti.f32) > prob:
+            absorbed = True
+        else:
+            attenuation /= prob
+        
 
     # debug = 1.0 if absorbed else 0.0
     return color * attenuation, debug
@@ -120,12 +143,16 @@ def Render():
         ray = CastRay(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5)
         albedo, density = ReadVolume(cameraPos[None])
         c, debug = Trace(ray, CalcVolumeRayDist(density))
-        # c, debug = Trace(ray, 1e20)
         color += c
         debugBuffer[u, v] = debug
 
         accum = accumulate[None]
         sceneColorBuffer[u, v] = (sceneColorBuffer[u, v] * (accum - 1) + color) / accum
+
+
+        # sceneColorBuffer[u, v] = One3f * SampleField(Vec3f([u, v, 5]) * 0.02)
+
+        # sceneColorBuffer[u, v] = One3f * smokeField[u % smokeField.shape[0], v % smokeField.shape[1], 5]
 
 @ti.kernel
 def Clear():
@@ -137,9 +164,26 @@ def Present():
     for i, j in sceneColorBuffer:
         windowImage[i, j] = sceneColorBuffer[i, j]
 
+@ti.kernel
+def GenerateFbm3D():
+    for i, j, k in smokeField:
+        pos = Vec3f([i, j, k])
+        h = 0.0
+        freq = 0.1
+        amp = 1.0
+        for l in range(1, 20):
+            m = pow(2.0, float(l))
+            h += noise.Noise3D(pos * freq * m) * amp / m
+        smokeField[i, j, k] = h
+
 def PrintDebugBuffer():
     buf = debugBuffer.to_numpy()
     np.savetxt("./temp/out.csv", buf, delimiter=',', fmt='%.2f')
+
+
+GenerateFbm3D()
+smokeBound[0] = Vec3f([-20.0, -20.0, -20.0])
+smokeBound[1] = Vec3f([ 20.0,  20.0,  20.0])
 
 while window.running:
     elapsedTime[None] = float(time.time() - beginTime)

@@ -54,7 +54,7 @@ def HitSphere(rayOrigin, rayDir, sphereCenter, sphereRadius, maxDist):
     return hit, dist
 
 @ti.func
-def HitPlane(rayOrigin, rayDir, planeNormal, planeD, maxDist):
+def HitPlaneNormDist(rayOrigin, rayDir, planeNormal, planeD, maxDist):
     hit = False
     dist = maxDist
 
@@ -66,6 +66,11 @@ def HitPlane(rayOrigin, rayDir, planeNormal, planeD, maxDist):
             hit = True
 
     return hit, dist
+
+@ti.func
+def HitPlaneNormPoint(rayOrigin, rayDir, planeNormal, planePoint, maxDist):
+    planeD = -planeNormal.dot(planePoint)
+    return HitPlaneNormDist(rayOrigin, rayDir, planeNormal, planeD, maxDist)
 
 @ti.func
 def HitAABB(rayOrigin, rayDir, boxMin, boxMax, maxDist):
