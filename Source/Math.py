@@ -106,6 +106,34 @@ def HitAABB(rayOrigin, rayDir, boxMin, boxMax, maxDist):
 
     return hit, t, goOut
 
+@ti.func
+def HitIriangle(rayOrigin, rayDir, vertices, maxDist):
+    # Möller Trumbore algo http://www.graphics.cornell.edu/pubs/1997/MT97.pdf
+    
+    hit = False
+    dist = maxDist
+
+    E1 = vertices[1] - vertices[0]
+    E2 = vertices[2] - vertices[0]
+    T = rayOrigin - vertices[0]
+
+    P = rayDir.cross(E2)
+    Q = T.cross(E1)
+    PdotE1 = P.dot(E1)
+    
+    if abs(PdotE1) > EPS:
+        invPdotE1 = 1.0 / PdotE1
+        t = Q.dot(E2) * invPdotE1
+        b1 = P.dot(T) * invPdotE1
+        b2 = Q.dot(rayDir) * invPdotE1
+
+        if EPS < t and t <= maxDist and \
+            0.0 <= b1 and 0.0 <= b2 and b1 + b2 <= 1.0:
+            hit = True
+            dist = t
+
+    return hit, dist
+
 if __name__ == "__main__":
     import time
 
@@ -120,11 +148,34 @@ if __name__ == "__main__":
         for i, j in windowImage:
             origin = Vec3f([i - WindowSize[0]/2, -1000, j - WindowSize[1]/2])
             dir = Vec3f([0, 1, 0])
+
             center = Vec3f([ti.cos(elapsedTime[None]), 0, ti.sin(elapsedTime[None])]) * 100.0
             hit, dist = HitSphere(origin, dir, center, 300.0, 1e20)
+            
             if hit:
                 norm = (origin + dist * dir - center).normalized()
                 windowImage[i, j] = norm * 0.5 + 0.5
+
+    @ti.kernel
+    def TestHitTriangle():
+        for i, j in windowImage:
+            origin = Vec3f([i - WindowSize[0]/2, -1000, j - WindowSize[1]/2])
+            dir = Vec3f([0, 1, 0])
+
+            t1 = elapsedTime[None] * 0.7
+            t2 = elapsedTime[None] * 1.1
+            t3 = elapsedTime[None] * 0.3
+            vertices = [
+                Vec3f([ti.cos(t1), 0, ti.sin(t1)]) * 200.0,
+                Vec3f([-ti.sin(t2), ti.cos(t2), 0]) * 200.0,
+                Vec3f([0, ti.cos(t3), ti.sin(t3)]) * 200.0,
+            ]
+            hit, dist = HitIriangle(origin, dir, vertices, 1e20)
+
+            if hit:
+                norm = (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0])
+                if norm.norm() > EPS:
+                    windowImage[i, j] = norm.normalized() * 0.5 + 0.5
 
     window = ti.ui.Window("TestHit", WindowSize, vsync=True)
     beginTime = time.time()
@@ -132,6 +183,6 @@ if __name__ == "__main__":
     while window.running:
         windowImage.fill(0)
         elapsedTime[None] = float(time.time() - beginTime)
-        TestHitSphere()
+        TestHitTriangle()
         window.get_canvas().set_image(windowImage)
         window.show()
