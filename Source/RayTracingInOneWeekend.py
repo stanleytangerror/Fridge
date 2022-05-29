@@ -120,28 +120,6 @@ debugBuffer = ti.field(dtype=ti.f32, shape=WindowSize)
 # ---------------------------------------------------------------------
 
 @ti.func
-def Reflect(N, L):
-    assert N.dot(L) > 0.0
-    O = N.dot(L) * 2.0 * N - L
-    assert AlmostEqual(O.norm(), 1.0)
-    return O
-
-@ti.func
-def Refract(N, L, EtaL_Over_EtaO):
-    assert N.dot(L) > 0.0
-    cosL = N.dot(L)
-    sinL = ti.sqrt(1.0 - cosL ** 2)
-    sinO = EtaL_Over_EtaO * sinL
-    assert sinO <= 1.0
-    cosO = ti.sqrt(1.0 - sinO ** 2)
-    
-    oHori = -EtaL_Over_EtaO * (L - cosL * N)
-    oVert = -N * cosO
-    O = oHori + oVert
-    assert AlmostEqual(O.norm(), 1.0)
-    return O
-
-@ti.func
 def CastRay(u, v):
     offset = aperture * 0.5 * RandomUnitDisk()
     o = cameraPos[None] + offset[0] * right[None] + offset[1] * up[None]

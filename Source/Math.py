@@ -33,6 +33,28 @@ def RandomUnitVec3():
     return Vec3f([r * ti.cos(phi), r * ti.sin(phi), z])
 
 @ti.func
+def Reflect(N, L):
+    assert N.dot(L) > 0.0
+    O = N.dot(L) * 2.0 * N - L
+    assert AlmostEqual(O.norm(), 1.0)
+    return O
+
+@ti.func
+def Refract(N, L, EtaL_Over_EtaO):
+    assert N.dot(L) > 0.0
+    cosL = N.dot(L)
+    sinL = ti.sqrt(1.0 - cosL ** 2)
+    sinO = EtaL_Over_EtaO * sinL
+    assert sinO <= 1.0
+    cosO = ti.sqrt(1.0 - sinO ** 2)
+    
+    oHori = -EtaL_Over_EtaO * (L - cosL * N)
+    oVert = -N * cosO
+    O = oHori + oVert
+    assert AlmostEqual(O.norm(), 1.0)
+    return O
+
+@ti.func
 def HitSphere(rayOrigin, rayDir, sphereCenter, sphereRadius, maxDist):
     offset = rayOrigin - sphereCenter
     a = rayDir.norm_sqr()
