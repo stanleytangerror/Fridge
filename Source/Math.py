@@ -105,3 +105,33 @@ def HitAABB(rayOrigin, rayDir, boxMin, boxMax, maxDist):
         goOut = False
 
     return hit, t, goOut
+
+if __name__ == "__main__":
+    import time
+
+    ti.init(arch=ti.vulkan)
+
+    WindowSize = (1920, 1080)
+    windowImage = ti.Vector.field(3, float, shape=WindowSize)
+    elapsedTime = ti.field(dtype=ti.f32, shape=())
+
+    @ti.kernel
+    def TestHitSphere():
+        for i, j in windowImage:
+            origin = Vec3f([i - WindowSize[0]/2, -1000, j - WindowSize[1]/2])
+            dir = Vec3f([0, 1, 0])
+            center = Vec3f([ti.cos(elapsedTime[None]), 0, ti.sin(elapsedTime[None])]) * 100.0
+            hit, dist = HitSphere(origin, dir, center, 300.0, 1e20)
+            if hit:
+                norm = (origin + dist * dir - center).normalized()
+                windowImage[i, j] = norm * 0.5 + 0.5
+
+    window = ti.ui.Window("TestHit", WindowSize, vsync=True)
+    beginTime = time.time()
+
+    while window.running:
+        windowImage.fill(0)
+        elapsedTime[None] = float(time.time() - beginTime)
+        TestHitSphere()
+        window.get_canvas().set_image(windowImage)
+        window.show()
