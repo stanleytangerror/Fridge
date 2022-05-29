@@ -180,7 +180,7 @@ for i in range(len(rectWithHoleList)):
     rectsWithHole[i] = rectWithHoleList[i]
 
 WindowSize = (1920, 1080)
-window = ti.ui.Window("CornellBox", WindowSize, vsync=True)
+window = ti.ui.Window("CornellBox", WindowSize, vsync=False)
 
 cameraTrans = CameraTransform(pos=Vec3f([278, 273, -800]), dir=ZUnit3f, up=YUnit3f)
 lens = CameraLens(90.0, WindowSize, 10, 0.0)
@@ -257,9 +257,11 @@ def Trace(ray, maxDist):
     color = Zero3f
 
     for bounce in range(maxDepth):
-        if brk: continue
-        if ti.random() > 0.9:
+        p = att.max()
+        if ti.random() > p:
             brk = True
+
+        if brk: continue
 
         hit, dist, norm, emissive, albedo = HitScene(ray, maxDist)
         if hit:
@@ -267,7 +269,7 @@ def Trace(ray, maxDist):
                 brk = True
                 color = emissive
             else:
-                att *= albedo
+                att *= albedo / p
                 nextOrigin = ray.origin + dist * ray.direction
                 nextDir = (Reflect(norm, -ray.direction) + RandomUnitVec3()).normalized()
                 ray = TRay(origin=nextOrigin, direction=nextDir)
