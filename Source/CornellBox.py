@@ -4,15 +4,50 @@ import numpy as np
 
 ti.init(arch=ti.vulkan)
 
+@ti.func
+def HitPolygonWithHole(rayOrigin, rayDir, vertices, holeVertices, maxDist):
+    assert len(vertices) >= 3
+
+    hit = False
+    dist = maxDist
+
+    h, d = HitPolygon(rayOrigin, rayDir, vertices, maxDist)
+    if h:
+        hh, dh = HitPolygon(rayOrigin, rayDir, holeVertices, maxDist)
+        if not hh:
+            hit = True
+            dist = d
+        
+    return hit, dist
+
 TRect = ti.types.struct(v0=Vec3f, v1=Vec3f, v2=Vec3f, v3=Vec3f, normal=Vec3f, emissive=Vec3f, albedo=Vec3f)
+TRectWithHole = ti.types.struct(v0=Vec3f, v1=Vec3f, v2=Vec3f, v3=Vec3f, vh0=Vec3f, vh1=Vec3f, vh2=Vec3f, vh3=Vec3f, normal=Vec3f, emissive=Vec3f, albedo=Vec3f)
 TRay = ti.types.struct(origin=Vec3f, direction=Vec3f)
 
 def CreateRect(vertices, emissive, color):
     norm = (vertices[2] - vertices[1]).cross(vertices[1] - vertices[0]).normalized()
-    return TRect(v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], normal=norm, emissive=emissive, albedo=color)
+    return TRect(   v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], 
+                    normal=norm, emissive=emissive, albedo=color)
+
+def CreateRectWithHole(vertices, holeVertices, emissive, color):
+    norm = (vertices[2] - vertices[1]).cross(vertices[1] - vertices[0]).normalized()
+    return TRectWithHole(   
+                    v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], 
+                    vh0 = holeVertices[0], vh1 = holeVertices[1], vh2 = holeVertices[2], vh3 = holeVertices[3], 
+                    normal=norm, emissive=emissive, albedo=color)
+
+def CreateRects(rectVertices, emissive, color):
+    result = []
+    for vertices in rectVertices:
+        norm = (vertices[2] - vertices[1]).cross(vertices[1] - vertices[0]).normalized()
+        result.append(TRect(v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], normal=norm, emissive=emissive, albedo=color))
+    return result
 
 White = Vec3f([1, 1, 1])
 Black = Vec3f([0, 0, 0])
+Red = Vec3f([1, 0, 0])
+Green = Vec3f([0, 1, 0])
+Blue = Vec3f([0, 0, 1])
 Zero3f = Vec3f([0.0, 0.0, 0.0])
 One3f = Vec3f([1.0, 1.0, 1.0])
 XUnit3f = Vec3f([1.0, 0.0, 0.0])
@@ -20,23 +55,129 @@ YUnit3f = Vec3f([0.0, 1.0, 0.0])
 ZUnit3f = Vec3f([0.0, 0.0, 1.0])
 
 rectList = []
-rectList.append(CreateRect([
+# cornell box data http://www.graphics.cornell.edu/online/box/data.html
+rectList.append(CreateRect([ # floor
     Vec3f([552.8,   0.0,   0.0  ]),
     Vec3f([0.0,     0.0,   0.0  ]),
     Vec3f([0.0,     0.0, 559.2  ]),
     Vec3f([549.6,   0.0, 559.2  ]) ], 
     Black, White))
-rectList.append(CreateRect([
+rectList.append(CreateRect([ # back wall
+    Vec3f([549.6,   0.0, 559.2   ]),
+    Vec3f([  0.0,   0.0, 559.2  ]),
+    Vec3f([  0.0, 548.8, 559.2  ]),
+    Vec3f([556.0, 548.8, 559.2  ]) ], 
+    Black, White))
+rectList.append(CreateRect([ # left wall
+    Vec3f([552.8,   0.0,   0.0    ]),
+    Vec3f([549.6,   0.0, 559.2  ]),
+    Vec3f([556.0, 548.8, 559.2  ]),
+    Vec3f([556.0, 548.8,   0.0  ]) ], 
+    Black, Red))
+rectList.append(CreateRect([ # right wall
+    Vec3f([0.0,   0.0, 559.2       ]),
+    Vec3f([0.0,   0.0,   0.0  ]),
+    Vec3f([0.0, 548.8,   0.0  ]),
+    Vec3f([0.0, 548.8, 559.2  ]) ], 
+    Black, Green))
+rectList.append(CreateRect([ # light
     Vec3f([343.0,   548.8, 227.0   ]),
     Vec3f([343.0,   548.8, 332.0  ]),
     Vec3f([213.0,   548.8, 332.0  ]),
     Vec3f([213.0,   548.8, 227.0  ]) ], 
-    Vec3f([8.0, 15.6, 18.4]), Black))
+    Vec3f([10.0, 10.0, 10.0]), Black))
+
+rectList += CreateRects([ # short block
+        [
+            Vec3f([ 130.0, 165.0,  65.0  ]),
+            Vec3f([  82.0, 165.0, 225.0 ]),
+            Vec3f([ 240.0, 165.0, 272.0 ]),
+            Vec3f([ 290.0, 165.0, 114.0 ]) 
+        ],
+        [
+            Vec3f([ 290.0,   0.0, 114.0 ]),
+            Vec3f([ 290.0, 165.0, 114.0 ]),
+            Vec3f([ 240.0, 165.0, 272.0 ]),
+            Vec3f([ 240.0,   0.0, 272.0 ]) 
+        ],
+        [
+            Vec3f([ 130.0,   0.0,  65.0 ]),
+            Vec3f([ 130.0, 165.0,  65.0 ]),
+            Vec3f([ 290.0, 165.0, 114.0 ]),
+            Vec3f([ 290.0,   0.0, 114.0 ]) 
+        ],
+        [
+            Vec3f([  82.0,   0.0, 225.0 ]),
+            Vec3f([  82.0, 165.0, 225.0 ]),
+            Vec3f([ 130.0, 165.0,  65.0 ]),
+            Vec3f([ 130.0,   0.0,  65.0 ]) 
+        ],
+        [
+            Vec3f([ 240.0,   0.0, 272.0 ]),
+            Vec3f([ 240.0, 165.0, 272.0 ]),
+            Vec3f([  82.0, 165.0, 225.0 ]),
+            Vec3f([  82.0,   0.0, 225.0 ]) 
+        ],
+    ], 
+    Black, White)
+
+rectList += CreateRects([ # long block
+        [
+            Vec3f([ 423.0, 330.0, 247.0  ]),
+            Vec3f([ 265.0, 330.0, 296.0 ]),
+            Vec3f([ 314.0, 330.0, 456.0 ]),
+            Vec3f([ 472.0, 330.0, 406.0 ]) 
+        ],
+        [
+            Vec3f([ 423.0,   0.0, 247.0 ]),
+            Vec3f([ 423.0, 330.0, 247.0 ]),
+            Vec3f([ 472.0, 330.0, 406.0 ]),
+            Vec3f([ 472.0,   0.0, 406.0 ]) 
+        ],
+        [
+            Vec3f([ 472.0,   0.0, 406.0 ]),
+            Vec3f([ 472.0, 330.0, 406.0 ]),
+            Vec3f([ 314.0, 330.0, 456.0 ]),
+            Vec3f([ 314.0,   0.0, 456.0 ]) 
+        ],
+        [
+            Vec3f([ 314.0,   0.0, 456.0 ]),
+            Vec3f([ 314.0, 330.0, 456.0 ]),
+            Vec3f([ 265.0, 330.0, 296.0 ]),
+            Vec3f([ 265.0,   0.0, 296.0 ]) 
+        ],
+        [
+            Vec3f([ 265.0,   0.0, 296.0 ]),
+            Vec3f([ 265.0, 330.0, 296.0 ]),
+            Vec3f([ 423.0, 330.0, 247.0 ]),
+            Vec3f([ 423.0,   0.0, 247.0 ]) 
+        ],
+    ], 
+    Black, White)
+
+rectWithHoleList = []
+rectWithHoleList.append(CreateRectWithHole( # ceiling
+        [
+            Vec3f([ 556.0, 548.8, 0.0     ]),
+            Vec3f([ 556.0, 548.8, 559.2 ]),
+            Vec3f([   0.0, 548.8, 559.2 ]),
+            Vec3f([   0.0, 548.8,   0.0 ]) 
+        ],
+        [
+            Vec3f([ 343.0, 548.8, 227.0 ]),
+            Vec3f([ 343.0, 548.8, 332.0 ]),
+            Vec3f([ 213.0, 548.8, 332.0 ]),
+            Vec3f([ 213.0, 548.8, 227.0 ]) 
+        ],
+        Black, White))
 
 rects = TRect.field(shape=(len(rectList)))
 for i in range(len(rectList)):
     rects[i] = rectList[i]
 
+rectsWithHole = TRectWithHole.field(shape=(len(rectWithHoleList)))
+for i in range(len(rectWithHoleList)):
+    rectsWithHole[i] = rectWithHoleList[i]
 
 WindowSize = (1920, 1080)
 window = ti.ui.Window("CornellBox", WindowSize, vsync=True)
@@ -89,6 +230,17 @@ def HitScene(ray, maxDist):
     for i in range(rects.shape[0]):
         rect = rects[i]
         h, d = HitPolygon(ray.origin, ray.direction, [rect.v0, rect.v1, rect.v2, rect.v3], maxDist)
+        if h and (not hit or (hit and d < dist)):
+            hit = True
+            dist = d
+            norm = rect.normal
+            emissive = rect.emissive
+            albedo = rect.albedo
+
+    for i in range(rectsWithHole.shape[0]):
+        rect = rectsWithHole[i]
+        h, d = HitPolygonWithHole(ray.origin, ray.direction, [rect.v0, rect.v1, rect.v2, rect.v3], 
+                                                            [rect.vh0, rect.vh1, rect.vh2, rect.vh3], maxDist)
         if h and (not hit or (hit and d < dist)):
             hit = True
             dist = d
@@ -150,9 +302,9 @@ def DebugColorBuffer():
 
 while window.running:
 
-    updated = cameraControl.UpdateCamera(window, cameraTrans)
+    updated = cameraControl.UpdateCamera(window, cameraTrans, 50.0)
     
-    fov[None] = 1.0
+    fov[None] = lens.mFovVer
     cameraPos[None] = cameraTrans.mPos
     cameraDir[None] = cameraTrans.mDir
     up[None] = cameraTrans.mUp
