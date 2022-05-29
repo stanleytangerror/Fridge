@@ -34,10 +34,10 @@ class CameraControl:
     def __init__(self):
         self.mDraggingLastPos = False
 
-    def UpdateCamera(self, window, cameraTrans):
+    def UpdateCamera(self, window, cameraTrans, speed = 1.0):
         updated = False
 
-        speed = 0.1
+        moveSpeed = 0.1 * speed
         keyMap = [
             ('w', cameraTrans.mDir),
             ('a', -cameraTrans.mRight),
@@ -51,9 +51,9 @@ class CameraControl:
             if window.is_pressed(key): 
                 dir = dir + d
                 updated = True
-        cameraTrans.mPos = cameraTrans.mPos + dir * speed
+        cameraTrans.mPos = cameraTrans.mPos + dir * moveSpeed
 
-        speed = 0.02
+        rotSpeed = 0.02
         deltaPos = Vec2f([0.0, 0.0])
         if not window.is_pressed(ti.ui.LMB):
             self.mDraggingLastPos = None
@@ -69,7 +69,7 @@ class CameraControl:
             v0 = cameraTrans.mDir
             v1 = -deltaPos[0] * cameraTrans.mRight - deltaPos[1] * cameraTrans.mUp
             axis = v1.cross(v0).normalized()
-            rot = Quaternion(axis=axis, angle=speed)
+            rot = Quaternion(axis=axis, angle=rotSpeed)
             cameraTrans.mDir = Vec3f(rot.rotate(cameraTrans.mDir))
             cameraTrans.mUp = Vec3f(rot.rotate(cameraTrans.mUp))
             cameraTrans.mRight = Vec3f(rot.rotate(cameraTrans.mRight))
