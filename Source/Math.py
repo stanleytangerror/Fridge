@@ -107,15 +107,15 @@ def HitAABB(rayOrigin, rayDir, boxMin, boxMax, maxDist):
     return hit, t, goOut
 
 @ti.func
-def HitIriangle(rayOrigin, rayDir, vertices, maxDist):
+def HitTriangle(rayOrigin, rayDir, v0, v1, v2, maxDist):
     # Möller Trumbore algo http://www.graphics.cornell.edu/pubs/1997/MT97.pdf
     
     hit = False
     dist = maxDist
 
-    E1 = vertices[1] - vertices[0]
-    E2 = vertices[2] - vertices[0]
-    T = rayOrigin - vertices[0]
+    E1 = v1 - v0
+    E2 = v2 - v0
+    T = rayOrigin - v0
 
     P = rayDir.cross(E2)
     Q = T.cross(E1)
@@ -132,6 +132,21 @@ def HitIriangle(rayOrigin, rayDir, vertices, maxDist):
             hit = True
             dist = t
 
+    return hit, dist
+
+@ti.func
+def HitPolygon(rayOrigin, rayDir, vertices, maxDist):
+    assert len(vertices) >= 3
+
+    hit = False
+    dist = maxDist
+
+    for i in ti.static(range(len(vertices) - 2)):
+        h, d = HitTriangle(rayOrigin, rayDir, vertices[0], vertices[i+1], vertices[i+2], maxDist)
+        if h:
+            hit = True
+            dist = ti.min(dist, d)
+                
     return hit, dist
 
 if __name__ == "__main__":
@@ -170,7 +185,36 @@ if __name__ == "__main__":
                 Vec3f([-ti.sin(t2), ti.cos(t2), 0]) * 200.0,
                 Vec3f([0, ti.cos(t3), ti.sin(t3)]) * 200.0,
             ]
-            hit, dist = HitIriangle(origin, dir, vertices, 1e20)
+            hit, dist = HitTriangle(origin, dir, vertices, 1e20)
+
+            if hit:
+                norm = (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0])
+                if norm.norm() > EPS:
+                    windowImage[i, j] = norm.normalized() * 0.5 + 0.5
+
+    @ti.kernel
+    def TestHitPolygon():
+        for i, j in windowImage:
+            origin = Vec3f([i - WindowSize[0]/2, -1000, j - WindowSize[1]/2])
+            dir = Vec3f([0, 1, 0])
+
+            t1 = elapsedTime[None] * 0.7
+            t2 = elapsedTime[None] * 1.1
+            t3 = elapsedTime[None] * 0.3
+
+            v0 = Vec3f([ti.cos(t1), 0, ti.sin(t1)]) * 200.0
+            e1 = Vec3f([-ti.sin(t2), ti.cos(t2), 0]) * 200.0 - v0
+            e2 = Vec3f([0, ti.cos(t3), ti.sin(t3)]) * 200.0 - v0
+            
+            vertices = [
+                v0,
+                v0 + 1.0 * e1 + 0.0 * e2,
+                v0 + 1.5 * e1 + 0.8 * e2,
+                v0 + 1.0 * e1 + 1.0 * e2,
+                v0 + 0.9 * e1 + 1.3 * e2,
+                v0 + 0.0 * e1 + 1.0 * e2,
+            ]
+            hit, dist = HitPolygon(origin, dir, vertices, 1e20)
 
             if hit:
                 norm = (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0])
@@ -183,6 +227,6 @@ if __name__ == "__main__":
     while window.running:
         windowImage.fill(0)
         elapsedTime[None] = float(time.time() - beginTime)
-        TestHitTriangle()
+        TestHitPolygon()
         window.get_canvas().set_image(windowImage)
         window.show()
