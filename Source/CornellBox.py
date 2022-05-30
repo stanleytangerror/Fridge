@@ -85,7 +85,7 @@ rectList.append(CreateRect([ # light
     Vec3f([343.0,   548.8, 332.0  ]),
     Vec3f([213.0,   548.8, 332.0  ]),
     Vec3f([213.0,   548.8, 227.0  ]) ], 
-    Vec3f([10.0, 10.0, 10.0]), Black))
+    One3f * 50.0, Black))
 
 rectList += CreateRects([ # short block
         [
@@ -280,9 +280,16 @@ def Trace(ray, maxDist):
                 brk = True
                 color = emissive
             else:
-                att *= albedo / p
+                fBrdf = 1.0 / (2.0 * ti.math.pi)
+                pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
+                Li = RandomUnitVec3OnHemisphere(norm)
+                att *= albedo * fBrdf * norm.dot(Li) / pMC
+
+                fRR = 1.0 / p # russian rulette factor
+                att *= fRR
+                
                 nextOrigin = ray.origin + dist * ray.direction
-                nextDir = RandomUnitVec3OnHemisphere(norm)
+                nextDir = Li
                 ray = TRay(origin=nextOrigin, direction=nextDir)
         else:
             brk = True
