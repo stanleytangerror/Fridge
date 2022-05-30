@@ -248,6 +248,10 @@ def HitScene(ray, maxDist):
             emissive = rect.emissive
             albedo = rect.albedo
 
+    if hit:
+        if norm.dot(-ray.direction) < 0.0:
+            norm *= -1.0
+
     return hit, dist, norm, emissive, albedo
 
 @ti.func
