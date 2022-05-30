@@ -177,6 +177,9 @@ class CornellBox:
         for i in range(len(rectWithHoleList)):
             self.rectsWithHole[i] = rectWithHoleList[i]
 
+    def GetCameraInitTransform(self):
+        return Vec3f([278, 273, -800]), Vec3f([0, 0, 1]), Vec3f([0, 1, 0])  # pos, dir, up
+
     @ti.func
     def HitScene(self, rayOrigin, rayDir, maxDist):
         hit = False
@@ -214,6 +217,7 @@ if __name__ == "__main__":
     TRay = ti.types.struct(origin=Vec3f, direction=Vec3f)
 
     ti.init(arch=ti.vulkan)
+    cornellBox = CornellBox()
 
     White = Vec3f([1, 1, 1])
     Black = Vec3f([0, 0, 0])
@@ -230,7 +234,8 @@ if __name__ == "__main__":
     WindowSize = (1920, 1080)
     window = ti.ui.Window("CornellBox", WindowSize, vsync=False)
 
-    cameraTrans = CameraTransform(pos=Vec3f([278, 273, -800]), dir=ZUnit3f, up=YUnit3f)
+    pos, dir, up = cornellBox.GetCameraInitTransform()
+    cameraTrans = CameraTransform(pos=pos, dir=dir, up=up)
     lens = CameraLens(90.0, WindowSize, 10, 0.0)
     cameraControl = CameraControl()
 
@@ -252,7 +257,6 @@ if __name__ == "__main__":
     spp = 1
     maxDepth = 100
 
-    cornellBox = CornellBox()
 
     @ti.func
     def CastRay(u, v):
