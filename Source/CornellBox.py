@@ -220,6 +220,13 @@ def CastRay(u, v):
     return TRay(origin=o, direction=d)
 
 @ti.func
+def RandomUnitVec3OnHemisphere(n):
+    v = RandomUnitVec3()
+    if n.dot(v) < 0.0:
+        v *= -1.0
+    return v
+
+@ti.func
 def HitScene(ray, maxDist):
     hit = False
     dist = maxDist
@@ -275,7 +282,7 @@ def Trace(ray, maxDist):
             else:
                 att *= albedo / p
                 nextOrigin = ray.origin + dist * ray.direction
-                nextDir = (Reflect(norm, -ray.direction) + RandomUnitVec3()).normalized()
+                nextDir = RandomUnitVec3OnHemisphere(norm)
                 ray = TRay(origin=nextOrigin, direction=nextDir)
         else:
             brk = True
