@@ -246,22 +246,6 @@ if __name__ == "__main__":
     spp = 4
     maxDepth = 100
 
-
-    @ti.func
-    def CastRay(u, v):
-        offset = cameraData.aperture[None] * 0.5 * RandomUnitDisk()
-        o = cameraData.cameraPos[None] + offset[0] * cameraData.right[None] + offset[1] * cameraData.up[None]
-
-        u = u + ti.random(ti.f32)
-        v = v + ti.random(ti.f32)
-        fu = 0.5 * cameraData.fov[None] * (u * cameraData.invResolution[None][0] - 0.5) * cameraData.aspectRatio[None]
-        fv = 0.5 * cameraData.fov[None] * (v * cameraData.invResolution[None][1] - 0.5)
-        disp = cameraData.focusDist[None] * Vec3f([ fu, fv, 1.0 ])
-            
-        d = (cameraData.cameraPos[None] + disp[2] * cameraData.cameraDir[None] + disp[0] * cameraData.right[None] + disp[1] * cameraData.up[None] - o).normalized()
-
-        return TRay(origin=o, direction=d)
-
     @ti.func
     def RandomUnitVec3OnHemisphere(n):
         v = RandomUnitVec3()
@@ -313,8 +297,8 @@ if __name__ == "__main__":
             color = Zero3f
 
             for i in range(spp):
-                ray = CastRay(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5)
-                c, debug = Trace(ray, 1e20)
+                rayOrigin, rayDir = CastRayForPixel(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5, cameraData)
+                c, debug = Trace(TRay(origin=rayOrigin, direction=rayDir), 1e20)
                 color += c
                 debugBuffer[u, v] = debug
             color = color / spp

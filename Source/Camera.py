@@ -100,3 +100,16 @@ class CameraDataConstBuffer:
         self.cameraDir[None] = camTrans.mDir
         self.up[None] = camTrans.mUp
         self.right[None] = camTrans.mRight
+
+@ti.func
+def CastRayForPixel(u, v, cameraData):
+    offset = cameraData.aperture[None] * 0.5 * RandomUnitDisk()
+    o = cameraData.cameraPos[None] + offset[0] * cameraData.right[None] + offset[1] * cameraData.up[None]
+    u = u + ti.random(ti.f32)
+    v = v + ti.random(ti.f32)
+    fu = 0.5 * cameraData.fov[None] * (u * cameraData.invResolution[None][0] - 0.5) * cameraData.aspectRatio[None]
+    fv = 0.5 * cameraData.fov[None] * (v * cameraData.invResolution[None][1] - 0.5)
+    disp = cameraData.focusDist[None] * Vec3f([ fu, fv, 1.0 ])
+        
+    d = (cameraData.cameraPos[None] + disp[2] * cameraData.cameraDir[None] + disp[0] * cameraData.right[None] + disp[1] * cameraData.up[None] - o).normalized()
+    return o, d
