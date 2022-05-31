@@ -101,38 +101,16 @@ for i in range(len(sphereList)):
 spp = 1.0
 depth = 100
 
-cameraPos = Vec3f.field(shape=())
-cameraDir = Vec3f.field(shape=())
-up = Vec3f.field(shape=())
-right = Vec3f.field(shape=())
+cameraData = CameraDataConstBuffer()
+
 cameraVolumeContext = TVolumeContext.field(shape=())
-fov = ti.field(dtype=ti.f32, shape=())
 accumulate = ti.field(dtype=ti.f32, shape=())
-aspectRatio = lens.AspectRatio
-invResolution = lens.InvResolution
-focusDist = lens.mFocusDistance
-aperture = lens.mAperture
 
 sceneColorBuffer = Vec3f.field(shape=WindowSize)
 windowImage = ti.Vector.field(3, float, shape=WindowSize)
 debugBuffer = ti.field(dtype=ti.f32, shape=WindowSize)
 
 # ---------------------------------------------------------------------
-
-@ti.func
-def CastRay(u, v):
-    offset = aperture * 0.5 * RandomUnitDisk()
-    o = cameraPos[None] + offset[0] * right[None] + offset[1] * up[None]
-
-    u = u + ti.random(ti.f32)
-    v = v + ti.random(ti.f32)
-    fu = 0.5 * fov[None] * (u * invResolution[0] - 0.5) * aspectRatio
-    fv = 0.5 * fov[None] * (v * invResolution[1] - 0.5)
-    disp = focusDist * Vec3f([ fu, fv, 1.0 ])
-        
-    d = (cameraPos[None] + disp[2] * cameraDir[None] + disp[0] * right[None] + disp[1] * up[None] - o).normalized()
-
-    return TRay(origin=o, direction=d)
 
 @ti.func
 def HitSphereSurface(ray, sphere, maxDist):
@@ -282,7 +260,8 @@ def Render():
         color = Zero3f
 
         for i in range(spp):
-            ray = CastRay(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5)
+            rayOrigin, rayDir = CastRayForPixel(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5, cameraData)
+            ray = TRay(origin=rayOrigin, direction=rayDir)
             volCtx = cameraVolumeContext[None]
             c, debug = Trace(ray, volCtx)
             color += c
@@ -305,11 +284,7 @@ while window.running:
 
     updated = cameraControl.UpdateCamera(window, cameraTrans)
     
-    fov[None] = 1.0
-    cameraPos[None] = cameraTrans.mPos
-    cameraDir[None] = cameraTrans.mDir
-    up[None] = cameraTrans.mUp
-    right[None] = cameraTrans.mRight
+    cameraData.FillData(lens, cameraTrans)
 
     cameraVolumeContext[None] = TVolumeContext(inside=0.0, materialId=-1)
 
