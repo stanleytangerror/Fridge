@@ -335,7 +335,7 @@ if __name__ == "__main__":
 
         updated = cameraControl.UpdateCamera(window, cameraTrans, 50.0)
         
-        cameraData.UpdateData(lens, cameraTrans)
+        cameraData.FillData(lens, cameraTrans)
 
         if updated:
             sceneColorBuffer.fill(0)

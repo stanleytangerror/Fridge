@@ -90,7 +90,7 @@ class CameraDataConstBuffer:
         self.focusDist = ti.field(dtype=ti.f32, shape=())
         self.aperture = ti.field(dtype=ti.f32, shape=())
 
-    def UpdateData(self, camLens: CameraLens, camTrans: CameraTransform):
+    def FillData(self, camLens: CameraLens, camTrans: CameraTransform):
         self.aspectRatio[None] = camLens.AspectRatio
         self.invResolution[None] = camLens.InvResolution
         self.focusDist[None] = camLens.mFocusDistance
