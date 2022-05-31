@@ -113,36 +113,6 @@ debugBuffer = ti.field(dtype=ti.f32, shape=WindowSize)
 # ---------------------------------------------------------------------
 
 @ti.func
-def HitSphereSurface(ray, sphere, maxDist):
-    offset = ray.origin - sphere.center
-    a = ray.direction.norm_sqr()
-    b = 2.0 * (offset[0] * ray.direction[0] + offset[1] * ray.direction[1] + offset[2] * ray.direction[2])
-    c = offset.norm_sqr() - sphere.radius ** 2
-    k = b ** 2 - 4 * a * c
-
-    dist = maxDist
-    hit = False
-    n = ZUnit3f
-    matId = -1
-    inside = False
-
-    if k >= 0:
-        t = (-b - ti.sqrt(k)) / 2 / a
-        if t > 0: dist = min(dist, t)
-        t = (-b + ti.sqrt(k)) / 2 / a
-        if t > 0: dist = min(dist, t)
-
-        if dist < maxDist - EPS:
-            hit = True
-            p = ray.origin + dist * ray.direction
-            n = (p - sphere.center).normalized()
-            if sphere.inverseNormal != 0: n *= -1.0
-            matId = sphere.materialId
-            assert AlmostEqual((p - sphere.center).norm(), sphere.radius)
-            inside = n.dot(-ray.direction) < 0.0
-    return hit, dist, n, inside, matId
-
-@ti.func
 def HitSceneSurface(ray, maxDist):
     hit = False
     dist = maxDist
@@ -151,14 +121,19 @@ def HitSceneSurface(ray, maxDist):
     matId = -1
 
     for s in range(spheres.shape[0]):
-        h, d, n, i, m = HitSphereSurface(ray, spheres[s], maxDist)
+        sphere = spheres[s]
+        h, d = HitSphere(ray.origin, ray.direction, sphere.center, sphere.radius, maxDist)
+
         if h and (not hit or (hit and d < dist)):
             hit = h
             dist = d
-            norm = n
-            inside = i
-            matId = m
+            p = ray.origin + dist * ray.direction
+            norm = (p - sphere.center).normalized()
+            if sphere.inverseNormal != 0: norm *= -1.0
+            inside = norm.dot(-ray.direction) < 0.0
+            matId = sphere.materialId
             assert matId >= 0
+
     return hit, dist, norm, inside, matId
 
 @ti.func
