@@ -55,39 +55,39 @@ class CornellBox:
         rectList = []
         # cornell box data http://www.graphics.cornell.edu/online/box/data.html
         rectList.append(self.CreateRect([ # floor
-            Vec3f([552.8,   0.0,   0.0  ]),
-            Vec3f([0.0,     0.0,   0.0  ]),
-            Vec3f([0.0,     0.0, 559.2  ]),
-            Vec3f([549.6,   0.0, 559.2  ]) ], 
+            Vec3f([ 552.8,   0.0,   0.0  ]),
+            Vec3f([ 0.0,     0.0,   0.0  ]),
+            Vec3f([ 0.0,     0.0, 559.2  ]),
+            Vec3f([ 549.6,   0.0, 559.2  ]) ], 
             CornellBox.WhiteSurface))
         rectList.append(self.CreateRect([ # back wall
-            Vec3f([549.6,   0.0, 559.2   ]),
-            Vec3f([  0.0,   0.0, 559.2  ]),
-            Vec3f([  0.0, 548.8, 559.2  ]),
-            Vec3f([556.0, 548.8, 559.2  ]) ], 
+            Vec3f([ 549.6,   0.0, 559.2  ]),
+            Vec3f([   0.0,   0.0, 559.2  ]),
+            Vec3f([   0.0, 548.8, 559.2  ]),
+            Vec3f([ 556.0, 548.8, 559.2  ]) ], 
             CornellBox.WhiteSurface))
         rectList.append(self.CreateRect([ # left wall
-            Vec3f([552.8,   0.0,   0.0    ]),
-            Vec3f([549.6,   0.0, 559.2  ]),
-            Vec3f([556.0, 548.8, 559.2  ]),
-            Vec3f([556.0, 548.8,   0.0  ]) ], 
+            Vec3f([ 552.8,   0.0,   0.0  ]),
+            Vec3f([ 549.6,   0.0, 559.2  ]),
+            Vec3f([ 556.0, 548.8, 559.2  ]),
+            Vec3f([ 556.0, 548.8,   0.0  ]) ], 
             CornellBox.RedSurface))
         rectList.append(self.CreateRect([ # right wall
-            Vec3f([0.0,   0.0, 559.2       ]),
-            Vec3f([0.0,   0.0,   0.0  ]),
-            Vec3f([0.0, 548.8,   0.0  ]),
-            Vec3f([0.0, 548.8, 559.2  ]) ], 
+            Vec3f([ 0.0,   0.0, 559.2  ]),
+            Vec3f([ 0.0,   0.0,   0.0  ]),
+            Vec3f([ 0.0, 548.8,   0.0  ]),
+            Vec3f([ 0.0, 548.8, 559.2  ]) ], 
             CornellBox.GreenSurface))
         rectList.append(self.CreateRect([ # light
-            Vec3f([343.0,   548.8, 227.0   ]),
-            Vec3f([343.0,   548.8, 332.0  ]),
-            Vec3f([213.0,   548.8, 332.0  ]),
-            Vec3f([213.0,   548.8, 227.0  ]) ], 
+            Vec3f([ 343.0,   548.8, 227.0  ]),
+            Vec3f([ 343.0,   548.8, 332.0  ]),
+            Vec3f([ 213.0,   548.8, 332.0  ]),
+            Vec3f([ 213.0,   548.8, 227.0  ]) ], 
             CornellBox.Light))
 
         rectList += self.CreateRects([ # short block
                 [
-                    Vec3f([ 130.0, 165.0,  65.0  ]),
+                    Vec3f([ 130.0, 165.0,  65.0 ]),
                     Vec3f([  82.0, 165.0, 225.0 ]),
                     Vec3f([ 240.0, 165.0, 272.0 ]),
                     Vec3f([ 290.0, 165.0, 114.0 ]) 
@@ -121,7 +121,7 @@ class CornellBox:
 
         rectList += self.CreateRects([ # long block
                 [
-                    Vec3f([ 423.0, 330.0, 247.0  ]),
+                    Vec3f([ 423.0, 330.0, 247.0 ]),
                     Vec3f([ 265.0, 330.0, 296.0 ]),
                     Vec3f([ 314.0, 330.0, 456.0 ]),
                     Vec3f([ 472.0, 330.0, 406.0 ]) 
@@ -156,7 +156,7 @@ class CornellBox:
         rectWithHoleList = []
         rectWithHoleList.append(self.CreateRectWithHole( # ceiling
                 [
-                    Vec3f([ 556.0, 548.8, 0.0     ]),
+                    Vec3f([ 556.0, 548.8, 0.0   ]),
                     Vec3f([ 556.0, 548.8, 559.2 ]),
                     Vec3f([   0.0, 548.8, 559.2 ]),
                     Vec3f([   0.0, 548.8,   0.0 ]) 
@@ -177,7 +177,7 @@ class CornellBox:
         for i in range(len(rectWithHoleList)):
             self.rectsWithHole[i] = rectWithHoleList[i]
 
-    def GetCameraInitTransform(self):
+    def GetCameraTransform(self):
         return Vec3f([278, 273, -800]), Vec3f([0, 0, 1]), Vec3f([0, 1, 0])  # pos, dir, up
 
     @ti.func
@@ -220,10 +220,8 @@ if __name__ == "__main__":
     cornellBox = CornellBox()
 
     White = Vec3f([1, 1, 1])
-    Black = Vec3f([0, 0, 0])
     Red = Vec3f([1, 0, 0])
     Green = Vec3f([0, 1, 0])
-    Blue = Vec3f([0, 0, 1])
     Zero3f = Vec3f([0.0, 0.0, 0.0])
     One3f = Vec3f([1.0, 1.0, 1.0])
     XUnit3f = Vec3f([1.0, 0.0, 0.0])
@@ -234,7 +232,7 @@ if __name__ == "__main__":
     WindowSize = (1920, 1080)
     window = ti.ui.Window("CornellBox", WindowSize, vsync=False)
 
-    pos, dir, up = cornellBox.GetCameraInitTransform()
+    pos, dir, up = cornellBox.GetCameraTransform()
     cameraTrans = CameraTransform(pos=pos, dir=dir, up=up)
     lens = CameraLens(90.0, WindowSize, 10, 0.0)
     cameraControl = CameraControl()
