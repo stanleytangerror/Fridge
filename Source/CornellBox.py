@@ -1,6 +1,5 @@
 from Math import *
 from Camera import *
-import numpy as np
 
 @ti.data_oriented
 class CornellBox:
@@ -214,9 +213,24 @@ class CornellBox:
 
 if __name__ == "__main__":
 
-    TRay = ti.types.struct(origin=Vec3f, direction=Vec3f)
+    import numpy as np
+    import OpenEXR
+    from numpy import float16
 
     ti.init(arch=ti.vulkan)
+
+    exrFile = OpenEXR.InputFile(r"D:\Download\box_exr\500nm.exr")
+    print(exrFile.header())
+    dw = exrFile.header()['dataWindow']
+    sz = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+    channelData = exrFile.channel('Y')
+    baseImgContent = np.fromstring(channelData, dtype=np.float16)
+    baseImgContent2d = np.fliplr(np.reshape(np.array(baseImgContent), (sz[1], sz[0])).transpose())
+    baseImg = ti.field(dtype=ti.f32, shape=sz)
+    baseImg.from_numpy(baseImgContent2d)
+    
+    TRay = ti.types.struct(origin=Vec3f, direction=Vec3f)
+
     cornellBox = CornellBox()
 
     White = Vec3f([1, 1, 1])
@@ -229,12 +243,12 @@ if __name__ == "__main__":
     ZUnit3f = Vec3f([0.0, 0.0, 1.0])
 
 
-    WindowSize = (1920, 1080)
+    WindowSize = (sz[0] * 2, sz[1])
     window = ti.ui.Window("CornellBox", WindowSize, vsync=False)
 
     pos, dir, up = cornellBox.GetCameraTransform()
     cameraTrans = CameraTransform(pos=pos, dir=dir, up=up)
-    lens = CameraLens(90.0, WindowSize, 10, 0.0)
+    lens = CameraLens(90.0, sz, 10, 0.0)
     cameraControl = CameraControl()
 
     cameraData = CameraDataConstBuffer()
@@ -257,7 +271,7 @@ if __name__ == "__main__":
     def Trace(ray, maxDist):
         brk = False
         att = One3f
-        color = Zero3f
+        color = 0.0
 
         for bounce in range(maxDepth):
             p = att.max()
@@ -270,11 +284,11 @@ if __name__ == "__main__":
             if hit:
                 if mat == CornellBox.Light:
                     brk = True
-                    color = One3f * 50.0
+                    color = 8.0
                 else:
-                    albedo =    Red if mat == CornellBox.RedSurface else \
-                                Green if mat == CornellBox.GreenSurface else \
-                                White
+                    albedo =    0.058 if mat == CornellBox.RedSurface else \
+                                0.285 if mat == CornellBox.GreenSurface else \
+                                0.747
                     fBrdf = 1.0 / (2.0 * ti.math.pi)
                     pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
                     Li = RandomUnitVec3OnHemisphere(norm)
@@ -299,7 +313,7 @@ if __name__ == "__main__":
             for i in range(spp):
                 rayOrigin, rayDir = CastRayForPixel(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5, cameraData)
                 c, debug = Trace(TRay(origin=rayOrigin, direction=rayDir), 1e20)
-                color += c
+                color += c * One3f
                 debugBuffer[u, v] = debug
             color = color / spp
 
@@ -310,6 +324,15 @@ if __name__ == "__main__":
     def Present():
         for i, j in sceneColorBuffer:
             windowImage[i, j] = sceneColorBuffer[i, j]
+
+    @ti.kernel
+    def Present():
+        for i, j in sceneColorBuffer:
+            if i < sz[0]:
+                windowImage[i, j] = sceneColorBuffer[i, j]
+            else:
+                windowImage[i, j] = baseImg[i - sz[0], j] * One3f
+            windowImage[i, j] *= 10.0
 
     def DebugColorBuffer():
         buf = debugBuffer.to_numpy()
