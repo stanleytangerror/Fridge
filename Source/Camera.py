@@ -75,3 +75,28 @@ class CameraControl:
             cameraTrans.mRight = Vec3f(rot.rotate(cameraTrans.mRight))
 
         return updated
+
+
+@ti.data_oriented
+class CameraDataConstBuffer:
+    def __init__(self):
+        self.cameraPos = Vec3f.field(shape=())
+        self.cameraDir = Vec3f.field(shape=())
+        self.up = Vec3f.field(shape=())
+        self.right = Vec3f.field(shape=())
+        self.fov = ti.field(dtype=ti.f32, shape=())
+        self.aspectRatio = ti.field(dtype=ti.f32, shape=())
+        self.invResolution = Vec2f.field(shape=())
+        self.focusDist = ti.field(dtype=ti.f32, shape=())
+        self.aperture = ti.field(dtype=ti.f32, shape=())
+
+    def UpdateData(self, camLens: CameraLens, camTrans: CameraTransform):
+        self.aspectRatio[None] = camLens.AspectRatio
+        self.invResolution[None] = camLens.InvResolution
+        self.focusDist[None] = camLens.mFocusDistance
+        self.aperture[None] = camLens.mAperture
+        self.fov[None] = camLens.mFovVer
+        self.cameraPos[None] = camTrans.mPos
+        self.cameraDir[None] = camTrans.mDir
+        self.up[None] = camTrans.mUp
+        self.right[None] = camTrans.mRight

@@ -237,37 +237,28 @@ if __name__ == "__main__":
     lens = CameraLens(90.0, WindowSize, 10, 0.0)
     cameraControl = CameraControl()
 
-    cameraPos = Vec3f.field(shape=())
-    cameraDir = Vec3f.field(shape=())
-    up = Vec3f.field(shape=())
-    right = Vec3f.field(shape=())
-    fov = ti.field(dtype=ti.f32, shape=())
+    cameraData = CameraDataConstBuffer()
     accumulate = ti.field(dtype=ti.f32, shape=())
-    aspectRatio = lens.AspectRatio
-    invResolution = lens.InvResolution
-    focusDist = lens.mFocusDistance
-    aperture = lens.mAperture
-
     sceneColorBuffer = Vec3f.field(shape=WindowSize)
     windowImage = ti.Vector.field(3, float, shape=WindowSize)
     debugBuffer = ti.field(dtype=ti.f32, shape=WindowSize)
 
-    spp = 1
+    spp = 4
     maxDepth = 100
 
 
     @ti.func
     def CastRay(u, v):
-        offset = aperture * 0.5 * RandomUnitDisk()
-        o = cameraPos[None] + offset[0] * right[None] + offset[1] * up[None]
+        offset = cameraData.aperture[None] * 0.5 * RandomUnitDisk()
+        o = cameraData.cameraPos[None] + offset[0] * cameraData.right[None] + offset[1] * cameraData.up[None]
 
         u = u + ti.random(ti.f32)
         v = v + ti.random(ti.f32)
-        fu = 0.5 * fov[None] * (u * invResolution[0] - 0.5) * aspectRatio
-        fv = 0.5 * fov[None] * (v * invResolution[1] - 0.5)
-        disp = focusDist * Vec3f([ fu, fv, 1.0 ])
+        fu = 0.5 * cameraData.fov[None] * (u * cameraData.invResolution[None][0] - 0.5) * cameraData.aspectRatio[None]
+        fv = 0.5 * cameraData.fov[None] * (v * cameraData.invResolution[None][1] - 0.5)
+        disp = cameraData.focusDist[None] * Vec3f([ fu, fv, 1.0 ])
             
-        d = (cameraPos[None] + disp[2] * cameraDir[None] + disp[0] * right[None] + disp[1] * up[None] - o).normalized()
+        d = (cameraData.cameraPos[None] + disp[2] * cameraData.cameraDir[None] + disp[0] * cameraData.right[None] + disp[1] * cameraData.up[None] - o).normalized()
 
         return TRay(origin=o, direction=d)
 
@@ -344,11 +335,7 @@ if __name__ == "__main__":
 
         updated = cameraControl.UpdateCamera(window, cameraTrans, 50.0)
         
-        fov[None] = lens.mFovVer
-        cameraPos[None] = cameraTrans.mPos
-        cameraDir[None] = cameraTrans.mDir
-        up[None] = cameraTrans.mUp
-        right[None] = cameraTrans.mRight
+        cameraData.UpdateData(lens, cameraTrans)
 
         if updated:
             sceneColorBuffer.fill(0)
