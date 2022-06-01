@@ -3,6 +3,8 @@ import taichi as ti
 Vec2i = ti.types.vector(2, ti.i32)
 Vec2f = ti.types.vector(2, ti.f32)
 Vec3f = ti.types.vector(3, ti.f32)
+Vec4f = ti.types.vector(4, ti.f32)
+Mat33f = ti.types.matrix(3, 3, ti.f32)
 
 EPS = 0.0001
 
@@ -17,6 +19,10 @@ def saturate(v):
 @ti.func
 def AlmostEqual(a, b):
     return ti.abs(a - b) < EPS
+
+@ti.func
+def AlmostZero(a):
+    return AlmostEqual(a, 0.0)
 
 @ti.func
 def RandomUnitDisk():
@@ -171,6 +177,42 @@ def HitPolygon(rayOrigin, rayDir, vertices, maxDist):
                 
     return hit, dist
 
+@ti.func
+def HitQuadric3d(rayOrigin, rayDir, Q, P, R, maxDist):
+    # https://en.wikipedia.org/wiki/Quadric
+    # Quadric def: x^t * Q * x + P^T * x + R = 0, Q Mat33, P Vec3, R Scalar
+    # quadratic equation form of t (x = O + tD) like https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/01_26_ray_intersections.html
+
+    hit = False
+    dist = maxDist
+
+    O = rayOrigin
+    D = rayDir
+    a = D.dot(Q@D)
+    b = D.dot(Q@O) + O.dot(Q@D) + P.dot(D)
+    c = P.dot(O) + O.dot(Q@O) + R
+
+    if AlmostZero(a):
+        if AlmostZero(b):
+            if AlmostZero(c):
+                dist = EPS
+        else:
+            t = -c / b
+            if t > EPS: dist = min(t, dist)
+    else:
+        ss = b * b-4.0 * a * c
+        if ss >= 0:
+            sss = ti.sqrt(ss)
+            t = (-b - sss) / 2.0 / a
+            if t > EPS: dist = min(t, dist)
+            t = (-b + sss) / 2.0 / a
+            if t > EPS: dist = min(t, dist)
+    
+    if 0.0 < dist and dist < maxDist - EPS:
+        hit = True
+    
+    return hit, dist
+
 if __name__ == "__main__":
     import time
 
@@ -243,12 +285,33 @@ if __name__ == "__main__":
                 if norm.norm() > EPS:
                     windowImage[i, j] = norm.normalized() * 0.5 + 0.5
 
+    @ti.kernel
+    def TestHitQuadric3d():
+        for i, j in windowImage:
+            origin = Vec3f([i - WindowSize[0]/2, -1000, j - WindowSize[1]/2])
+            dir = Vec3f([0, 1, 0])
+
+            t = ti.sin(elapsedTime[None]) + 1.1
+
+            Q = Mat33f([
+                [0.01 / t, 0, 0], 
+                [0, 1, 0], 
+                [0, 0, 0], 
+                ])
+            P = Vec3f([0, 0, -1])
+            R = 0
+
+            hit, dist = HitQuadric3d(origin, dir, Q, P, R, 1e20)
+
+            if hit:
+                windowImage[i, j] = Vec3f(1)
+
     window = ti.ui.Window("TestHit", WindowSize, vsync=True)
     beginTime = time.time()
 
     while window.running:
         windowImage.fill(0)
         elapsedTime[None] = float(time.time() - beginTime)
-        TestHitPolygon()
+        TestHitQuadric3d()
         window.get_canvas().set_image(windowImage)
         window.show()
