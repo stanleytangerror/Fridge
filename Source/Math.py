@@ -213,14 +213,29 @@ def HitQuadric3d(rayOrigin, rayDir, Q, P, R, maxDist):
     
     return hit, dist
 
+@ti.func
+def CalcQuadric3dNormal(x, Q, P, R):
+    # Quadric def: x^t * Q * x + P^T * x + R = 0, Q Mat33, P Vec3, R Scalar
+    # calc derivative from https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf
+    return ((Q + Q.transpose()) @ x + P).normalized()
+
 if __name__ == "__main__":
     import time
+    from Camera import *
 
     ti.init(arch=ti.vulkan)
 
     WindowSize = (1920, 1080)
     windowImage = ti.Vector.field(3, float, shape=WindowSize)
     elapsedTime = ti.field(dtype=ti.f32, shape=())
+
+    window = ti.ui.Window("TestHit", WindowSize, vsync=True)
+    beginTime = time.time()
+
+    cameraTrans = CameraTransform(pos=Vec3f([0, -100, 0]), dir=Vec3f([0, 1, 0]), up=Vec3f([0, 0, 1]))
+    lens = CameraLens(90.0, WindowSize, 10, 0.0)
+    cameraControl = CameraControl()
+    cameraData = CameraDataConstBuffer()
 
     @ti.kernel
     def TestHitSphere():
@@ -288,13 +303,12 @@ if __name__ == "__main__":
     @ti.kernel
     def TestHitQuadric3d():
         for i, j in windowImage:
-            origin = Vec3f([i - WindowSize[0]/2, -1000, j - WindowSize[1]/2])
-            dir = Vec3f([0, 1, 0])
+            origin, dir = CastRayForPixel(i, j, cameraData)
 
             t = ti.sin(elapsedTime[None]) + 1.1
 
             Q = Mat33f([
-                [0.01 / t, 0, 0], 
+                [1, 0, 0], 
                 [0, 1, 0], 
                 [0, 0, 0], 
                 ])
@@ -302,16 +316,23 @@ if __name__ == "__main__":
             R = 0
 
             hit, dist = HitQuadric3d(origin, dir, Q, P, R, 1e20)
-
             if hit:
-                windowImage[i, j] = Vec3f(1)
+                p = origin + dist * dir
+                norm = CalcQuadric3dNormal(p, Q, P, R)
+                windowImage[i, j] = norm * 0.5 + 0.5
 
-    window = ti.ui.Window("TestHit", WindowSize, vsync=True)
-    beginTime = time.time()
+            center = Vec3f([10, 0, 0])
+            hit, dist = HitSphere(origin, dir, center, 5.0, 1e20)
+            if hit:
+                p = origin + dist * dir
+                windowImage[i, j] = (p - center).normalized() * 0.5 + 0.5
 
     while window.running:
-        windowImage.fill(0)
         elapsedTime[None] = float(time.time() - beginTime)
+        cameraControl.UpdateCamera(window, cameraTrans, speed=5.0)
+        cameraData.FillData(lens, cameraTrans)
+
+        windowImage.fill(0)
         TestHitQuadric3d()
         window.get_canvas().set_image(windowImage)
         window.show()
