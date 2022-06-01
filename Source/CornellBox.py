@@ -289,7 +289,7 @@ if __name__ == "__main__":
                     albedo =    0.058 if mat == CornellBox.RedSurface else \
                                 0.285 if mat == CornellBox.GreenSurface else \
                                 0.747
-                    fBrdf = 1.0 / (2.0 * ti.math.pi)
+                    fBrdf = 1.0 / (2.0 * ti.math.pi) # lambertian
                     pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
                     Li = RandomUnitVec3OnHemisphere(norm)
                     att *= albedo * fBrdf * norm.dot(Li) / pMC
