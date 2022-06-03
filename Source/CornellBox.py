@@ -10,6 +10,7 @@ class CornellBox:
     WhiteSurface = 1
     GreenSurface = 2
     RedSurface = 3
+    MirrorSurface = 4
 
     @staticmethod
     @ti.func
@@ -150,7 +151,7 @@ class CornellBox:
                     Vec3f([ 423.0,   0.0, 247.0 ]) 
                 ],
             ], 
-            CornellBox.WhiteSurface)
+            CornellBox.MirrorSurface)
 
         rectWithHoleList = []
         rectWithHoleList.append(self.CreateRectWithHole( # ceiling
@@ -285,14 +286,25 @@ if __name__ == "__main__":
                 if id == CornellBox.Light:
                     brk = True
                     color = 8.0
+                elif id == CornellBox.MirrorSurface:
+                    fBrdf = 1.0 # ???
+                    Li = Reflect(norm, -ray.direction)
+                    att *= fBrdf * norm.dot(Li)
+
+                    fRR = 1.0 / p # russian rulette factor
+                    att *= fRR
+                    
+                    nextOrigin = ray.origin + dist * ray.direction
+                    nextDir = Li
+                    ray = TRay(origin=nextOrigin, direction=nextDir)                    
                 else:
                     albedo =    0.058 if id == CornellBox.RedSurface else \
                                 0.285 if id == CornellBox.GreenSurface else \
                                 0.747
-                    fBrdf = 1.0 / (2.0 * ti.math.pi) # lambertian
+                    fBrdf = albedo / (2.0 * ti.math.pi) # lambertian
                     pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
                     Li = RandomUnitVec3OnHemisphere(norm)
-                    att *= albedo * fBrdf * norm.dot(Li) / pMC
+                    att *= fBrdf * norm.dot(Li) / pMC
 
                     fRR = 1.0 / p # russian rulette factor
                     att *= fRR
@@ -303,7 +315,7 @@ if __name__ == "__main__":
             else:
                 brk = True
 
-        return att * color, 1
+        return att * color
 
     @ti.kernel
     def Render():
@@ -312,9 +324,8 @@ if __name__ == "__main__":
 
             for i in range(spp):
                 rayOrigin, rayDir = CastRayForPixel(u + ti.random(ti.f32) - 0.5, v + ti.random(ti.f32) - 0.5, cameraData)
-                c, debug = Trace(TRay(origin=rayOrigin, direction=rayDir), 1e20)
+                c = Trace(TRay(origin=rayOrigin, direction=rayDir), 1e20)
                 color += c * One3f
-                debugBuffer[u, v] = debug
             color = color / spp
 
             accum = accumulate[None]
@@ -332,7 +343,7 @@ if __name__ == "__main__":
                 windowImage[i, j] = sceneColorBuffer[i, j]
             else:
                 windowImage[i, j] = baseImg[i - sz[0], j] * One3f
-            windowImage[i, j] *= 10.0
+            windowImage[i, j] *= 2.0
 
     def DebugColorBuffer():
         buf = debugBuffer.to_numpy()
