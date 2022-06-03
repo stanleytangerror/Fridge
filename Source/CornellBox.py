@@ -3,8 +3,8 @@ from Camera import *
 
 @ti.data_oriented
 class CornellBox:
-    TRect = ti.types.struct(v0=Vec3f, v1=Vec3f, v2=Vec3f, v3=Vec3f, normal=Vec3f, mat=ti.i32)
-    TRectWithHole = ti.types.struct(v0=Vec3f, v1=Vec3f, v2=Vec3f, v3=Vec3f, vh0=Vec3f, vh1=Vec3f, vh2=Vec3f, vh3=Vec3f, normal=Vec3f, mat=ti.i32)
+    TRect = ti.types.struct(v0=Vec3f, v1=Vec3f, v2=Vec3f, v3=Vec3f, normal=Vec3f, id=ti.i32)
+    TRectWithHole = ti.types.struct(v0=Vec3f, v1=Vec3f, v2=Vec3f, v3=Vec3f, vh0=Vec3f, vh1=Vec3f, vh2=Vec3f, vh3=Vec3f, normal=Vec3f, id=ti.i32)
 
     Light = 0
     WhiteSurface = 1
@@ -29,25 +29,25 @@ class CornellBox:
         return hit, dist
     
     @staticmethod
-    def CreateRect(vertices, mat):
+    def CreateRect(vertices, id):
         norm = (vertices[2] - vertices[1]).cross(vertices[1] - vertices[0]).normalized()
         return CornellBox.TRect(   v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], 
-                        normal=norm, mat=mat)
+                        normal=norm, id=id)
 
     @staticmethod
-    def CreateRectWithHole(vertices, holeVertices, mat):
+    def CreateRectWithHole(vertices, holeVertices, id):
         norm = (vertices[2] - vertices[1]).cross(vertices[1] - vertices[0]).normalized()
         return CornellBox.TRectWithHole(   
                         v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], 
                         vh0 = holeVertices[0], vh1 = holeVertices[1], vh2 = holeVertices[2], vh3 = holeVertices[3], 
-                        normal=norm, mat=mat)
+                        normal=norm, id=id)
 
     @staticmethod
-    def CreateRects(rectVertices, mat):
+    def CreateRects(rectVertices, id):
         result = []
         for vertices in rectVertices:
             norm = (vertices[2] - vertices[1]).cross(vertices[1] - vertices[0]).normalized()
-            result.append(CornellBox.TRect(v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], normal=norm, mat=mat))
+            result.append(CornellBox.TRect(v0 = vertices[0], v1 = vertices[1], v2 = vertices[2], v3 = vertices[3], normal=norm, id=id))
         return result
 
     def __init__(self):
@@ -184,7 +184,7 @@ class CornellBox:
         hit = False
         dist = maxDist
         norm = ZUnit3f
-        mat = 0
+        id = 0
 
         for i in range(self.rects.shape[0]):
             rect = self.rects[i]
@@ -193,7 +193,7 @@ class CornellBox:
                 hit = True
                 dist = d
                 norm = rect.normal
-                mat = rect.mat
+                id = rect.id
 
         for i in range(self.rectsWithHole.shape[0]):
             rect = self.rectsWithHole[i]
@@ -203,13 +203,13 @@ class CornellBox:
                 hit = True
                 dist = d
                 norm = rect.normal
-                mat = rect.mat
+                id = rect.id
 
         if hit:
             if norm.dot(-rayDir) < 0.0:
                 norm *= -1.0
 
-        return hit, dist, norm, mat
+        return hit, dist, norm, id
 
 if __name__ == "__main__":
 
@@ -280,14 +280,14 @@ if __name__ == "__main__":
 
             if brk: continue
 
-            hit, dist, norm, mat = cornellBox.HitScene(ray.origin, ray.direction, maxDist)
+            hit, dist, norm, id = cornellBox.HitScene(ray.origin, ray.direction, maxDist)
             if hit:
-                if mat == CornellBox.Light:
+                if id == CornellBox.Light:
                     brk = True
                     color = 8.0
                 else:
-                    albedo =    0.058 if mat == CornellBox.RedSurface else \
-                                0.285 if mat == CornellBox.GreenSurface else \
+                    albedo =    0.058 if id == CornellBox.RedSurface else \
+                                0.285 if id == CornellBox.GreenSurface else \
                                 0.747
                     fBrdf = 1.0 / (2.0 * ti.math.pi) # lambertian
                     pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
