@@ -10,7 +10,7 @@ class CornellBox:
     WhiteSurface = 1
     GreenSurface = 2
     RedSurface = 3
-    MirrorSurface = 4
+    ChromeSurface = 4
 
     @staticmethod
     @ti.func
@@ -151,7 +151,7 @@ class CornellBox:
                     Vec3f([ 423.0,   0.0, 247.0 ]) 
                 ],
             ], 
-            CornellBox.MirrorSurface)
+            CornellBox.ChromeSurface)
 
         rectWithHoleList = []
         rectWithHoleList.append(self.CreateRectWithHole( # ceiling
@@ -286,7 +286,7 @@ if __name__ == "__main__":
                 if id == CornellBox.Light:
                     brk = True
                     color = 8.0
-                elif id == CornellBox.MirrorSurface:
+                elif id == CornellBox.ChromeSurface:
                     fBrdf = 1.0 # ???
                     Li = Reflect(norm, -ray.direction)
                     att *= fBrdf * norm.dot(Li)
