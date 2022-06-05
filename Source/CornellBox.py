@@ -258,7 +258,7 @@ if __name__ == "__main__":
     windowImage = ti.Vector.field(3, float, shape=WindowSize)
     debugBuffer = ti.field(dtype=ti.f32, shape=WindowSize)
 
-    spp = 4
+    spp = 4.0
     maxDepth = 100
 
     @ti.func
@@ -269,53 +269,91 @@ if __name__ == "__main__":
         return v
 
     @ti.func
+    def RandomPointOnRect(rect):
+        e1 = rect.v1 - rect.v0
+        e3 = rect.v3 - rect.v0
+        return rect.v0 + ti.random() * e1 + ti.random() * e3, e1.norm() * e3.norm()
+
+    @ti.func
     def Trace(ray, maxDist):
         brk = False
         att = One3f
-        color = 0.0
+        color = Zero3f
 
         for bounce in range(maxDepth):
-            p = att.max()
-            if ti.random() > p:
-                brk = True
-
             if brk: continue
 
             hit, dist, norm, id = cornellBox.HitScene(ray.origin, ray.direction, maxDist)
             if hit:
-                if id == CornellBox.Light:
+                # shade hit point
+                hitPoint = ray.origin + dist * ray.direction
+
+                if id == CornellBox.Light: 
+                    # hit light    
                     brk = True
-                    color = 8.0
-                elif id == CornellBox.ChromeSurface:
-                    fBrdf = 1.0 # ???
-                    Li = Reflect(norm, -ray.direction)
-                    att *= fBrdf * norm.dot(Li)
+                    color += att * 8.0
+                else: 
+                    # hit normal surface
+                    p = att.max()
+                    if ti.random() > p:
+                        brk = True
+                        continue
+                        
+                    # direct lighting contrib
+                    for i in range(cornellBox.rects.shape[0]):
+                        rect = cornellBox.rects[i]
+                        if rect.id == CornellBox.Light:
+                            pLight, A = RandomPointOnRect(rect)
+                            hitToLight = pLight - hitPoint
+                            distToLight = hitToLight.norm()
+                            dirToLight = hitToLight / distToLight
+                            
+                            if dirToLight.dot(norm) > EPS:
+                                hs, ds, ns, ids = cornellBox.HitScene(hitPoint, dirToLight, maxDist)
+                                if hs and AlmostEqual(ds, distToLight):
+                                    if id == CornellBox.ChromeSurface:
+                                        Li = Reflect(norm, -ray.direction)
+                                        if AlmostEqual(dirToLight[0], Li[0]) and AlmostEqual(dirToLight[1], Li[1]) and AlmostEqual(dirToLight[2], Li[2]):
+                                            fBrdf = 1.0 # ???
+                                            pMC = 1.0 / A
+                                            L = 8.0 * fBrdf * norm.dot(dirToLight) / (distToLight ** 2) / pMC
+                                            color += att * L
+                                    else:
+                                        albedo =    0.058 if id == CornellBox.RedSurface else \
+                                                    0.285 if id == CornellBox.GreenSurface else \
+                                                    0.747
+                                        fBrdf = albedo / (2.0 * ti.math.pi) # lambertian
+                                        pMC = 1.0 / A
+                                        L = 8.0 * fBrdf * norm.dot(dirToLight) / (distToLight ** 2) / pMC
+                                        color += att * L
 
-                    fRR = 1.0 / p # russian rulette factor
-                    att *= fRR
-                    
-                    nextOrigin = ray.origin + dist * ray.direction
-                    nextDir = Li
-                    ray = TRay(origin=nextOrigin, direction=nextDir)                    
-                else:
-                    albedo =    0.058 if id == CornellBox.RedSurface else \
-                                0.285 if id == CornellBox.GreenSurface else \
-                                0.747
-                    fBrdf = albedo / (2.0 * ti.math.pi) # lambertian
-                    pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
-                    Li = RandomUnitVec3OnHemisphere(norm)
-                    att *= fBrdf * norm.dot(Li) / pMC
+                    # indirect lighting contrib
+                    if id == CornellBox.ChromeSurface:
+                        fBrdf = 1.0 # ???
+                        Li = Reflect(norm, -ray.direction)
+                        att *= fBrdf * norm.dot(Li)
 
-                    fRR = 1.0 / p # russian rulette factor
-                    att *= fRR
-                    
-                    nextOrigin = ray.origin + dist * ray.direction
-                    nextDir = Li
-                    ray = TRay(origin=nextOrigin, direction=nextDir)
+                        fRR = 1.0 / p # russian rulette factor
+                        att *= fRR
+
+                        ray = TRay(origin=hitPoint, direction=Li)
+                    else:
+                        albedo =    0.058 if id == CornellBox.RedSurface else \
+                                    0.285 if id == CornellBox.GreenSurface else \
+                                    0.747
+                        fBrdf = albedo / (2.0 * ti.math.pi) # lambertian
+                        pMC = 1.0 / (2.0 * ti.math.pi) # mc integral pdf
+                        Li = RandomUnitVec3OnHemisphere(norm)
+                        att *= fBrdf * norm.dot(Li) / pMC
+
+                        fRR = 1.0 / p # russian rulette factor
+                        att *= fRR
+
+                        ray = TRay(origin=hitPoint, direction=Li)
             else:
                 brk = True
 
-        return att * color
+        return color
 
     @ti.kernel
     def Render():
