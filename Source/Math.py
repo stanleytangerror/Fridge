@@ -5,6 +5,7 @@ Vec2f = ti.types.vector(2, ti.f32)
 Vec3f = ti.types.vector(3, ti.f32)
 Vec4f = ti.types.vector(4, ti.f32)
 Mat33f = ti.types.matrix(3, 3, ti.f32)
+Mat44f = ti.types.matrix(4, 4, ti.f32)
 
 EPS = 0.0001
 
