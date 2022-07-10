@@ -13,9 +13,12 @@ class CameraTransform:
         self.mRight = dir.cross(up)
         assert self.mRight.norm() == 1.0
         self.mPos = pos
-    
+
 class CameraLens:
-    def __init__(self, fovVert, resolution: Vec2i, focusDistance, aperture):
+    def __init__(self,  fovVert: float = 90.0, 
+                        resolution: Vec2i = Vec2i([1280, 720]), 
+                        focusDistance: float = 100.0, 
+                        aperture: float = 0.0):
         assert fovVert < 180.0
         self.mFovVer = fovVert / 180.0 * math.pi
         self.mResolution = resolution
