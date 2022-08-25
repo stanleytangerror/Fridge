@@ -66,20 +66,77 @@ class CustomRenderEngine(bpy.types.RenderEngine):
     def view_update(self, context, depsgraph):
         print('calling CustomRenderEngine.view_update')
 
-        region = context.region
-        view3d = context.space_data
-        scene = depsgraph.scene
+        # region = context.region
+        # view3d = context.space_data
+        # scene = depsgraph.scene
 
-        blenderCamera = depsgraph.scene.camera
-        blenderViewMat = context.region_data.view_matrix.inverted()
-        viewMat = Mat44f(blenderViewMat)
-        cameraPos = viewMat @ Vec4f([0, 0, 0, 1])
-        cameraUp = viewMat @ Vec4f([0, 0, 1, 0])
-        cameraDir = viewMat @ Vec4f([0, 1, 0, 0])
+        # blenderCamera = depsgraph.scene.camera
+        # blenderViewMat = context.region_data.view_matrix.inverted()
+        # viewMat = Mat44f(blenderViewMat)
+        # cameraPos = viewMat @ Vec4f([0, 0, 0, 1])
+        # cameraUp = viewMat @ Vec4f([0, 0, 1, 0])
+        # cameraDir = viewMat @ Vec4f([0, 1, 0, 0])
+
+        # self.camLens = Camera.CameraLens(
+        #                     fovVert=blenderCamera.angle_y * 180.0 / math.pi, 
+        #                     resolution=Vec2i(region.width, region.height), 
+        #                     focusDistance=10.0, aperture=0.0)
+        
+        # self.camTrans = Camera.CameraTransform(
+        #                     pos=cameraPos,
+        #                     up=cameraUp,
+        #                     dir=cameraDir)
+
+        # print(str(self.camTrans.mPos))
+
+        # if not self.scene_data:
+        #     # First time initialization
+        #     self.scene_data = []
+        #     first_time = True
+
+        #     # Loop over all datablocks used in the scene.
+        #     for datablock in depsgraph.ids:
+        #         pass
+        # else:
+        #     first_time = False
+
+        #     # Test which datablocks changed
+        #     for update in depsgraph.updates:
+        #         print("Datablock updated: ", update.id.name)
+
+        #     # Test if any material was added, removed or changed.
+        #     if depsgraph.id_type_updated('MATERIAL'):
+        #         print("Materials updated")
+
+        # # Loop over all object instances in the scene.
+        # if first_time or depsgraph.id_type_updated('OBJECT'):
+        #     for instance in depsgraph.object_instances:
+        #         pass
+
+    def update(self, data=None, depsgraph=None):
+        print('calling CustomRenderEngine.update')
+
+        scene = depsgraph.scene
+        blenderCamera = scene.camera
+
+        # https://blender.stackexchange.com/questions/130948/blender-api-get-current-location-and-rotation-of-camera-tracking-an-object
+        pos, rot, scale = blenderCamera.matrix_world.decompose()
+        rotMatB = rot.to_matrix()
+        rotMat = ti.Matrix.cols([
+            Vec3f(rotMatB.col[0]), 
+            Vec3f(rotMatB.col[1]), 
+            Vec3f(rotMatB.col[2])])
+        cameraPos = Vec3f(pos)
+        cameraUp = rotMat @ Vec3f([0, 0, 1])
+        cameraDir = rotMat @ Vec3f([0, 1, 0])
+
+        # https://blender.stackexchange.com/questions/80195/how-to-get-the-truly-width-and-height-of-frame-when-rendering-it-would-be-good
+        renderScale = scene.render.resolution_percentage / 100.0
+        resolution = Vec2i(scene.render.resolution_x * renderScale, scene.render.resolution_y * renderScale)
 
         self.camLens = Camera.CameraLens(
-                            fovVert=blenderCamera.angle_y * 180.0 / math.pi, 
-                            resolution=Vec2i(region.width, region.height), 
+                            fovVert=blenderCamera.data.angle_y * 180.0 / math.pi, 
+                            resolution=resolution, 
                             focusDistance=10.0, aperture=0.0)
         
         self.camTrans = Camera.CameraTransform(
@@ -87,31 +144,8 @@ class CustomRenderEngine(bpy.types.RenderEngine):
                             up=cameraUp,
                             dir=cameraDir)
 
-        print(str(self.camTrans.mPos))
-
-        if not self.scene_data:
-            # First time initialization
-            self.scene_data = []
-            first_time = True
-
-            # Loop over all datablocks used in the scene.
-            for datablock in depsgraph.ids:
-                pass
-        else:
-            first_time = False
-
-            # Test which datablocks changed
-            for update in depsgraph.updates:
-                print("Datablock updated: ", update.id.name)
-
-            # Test if any material was added, removed or changed.
-            if depsgraph.id_type_updated('MATERIAL'):
-                print("Materials updated")
-
-        # Loop over all object instances in the scene.
-        if first_time or depsgraph.id_type_updated('OBJECT'):
-            for instance in depsgraph.object_instances:
-                pass
+    def view_update(self, context, depsgraph):
+        print('calling CustomRenderEngine.view_update')
 
     # For viewport renders, this method is called whenever Blender redraws
     # the 3D viewport. The renderer is expected to quickly draw the render
