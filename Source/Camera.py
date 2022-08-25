@@ -11,7 +11,7 @@ class CameraTransform:
         self.mDir = dir.normalized()
         self.mUp = up.normalized()
         self.mRight = dir.cross(up)
-        assert self.mRight.norm() == 1.0
+        assert abs(self.mRight.norm() - 1.0) < EPS
         self.mPos = pos
 
 class CameraLens:
